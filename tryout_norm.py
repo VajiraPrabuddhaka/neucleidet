@@ -15,6 +15,7 @@ from skimage.transform import resize
 from skimage.morphology import label
 
 from keras.models import Model, load_model
+from keras import metrics
 from keras.layers import Input
 from keras.layers.core import Dropout, Lambda
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
@@ -22,6 +23,7 @@ from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras import backend as K
+from keras import optimizers
 
 import tensorflow as tf
 
@@ -42,11 +44,14 @@ np.random.seed = seed
 # Get train and test IDs
 train_ids = next(os.walk(TRAIN_PATH))[1]
 test_ids = next(os.walk(TEST_PATH))[1]
+print ("Test Ids")
+print (len(test_ids))
 
 
 # Get and resize train images and masks
 X_train = np.zeros((len(train_ids), IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS), dtype=np.uint8)
 Y_train = np.zeros((len(train_ids), IMG_HEIGHT, IMG_WIDTH, 1), dtype=np.bool)
+
 print('Getting and resizing train images and masks ... ')
 sys.stdout.flush()
 for n, id_ in tqdm(enumerate(train_ids), total=len(train_ids)):
@@ -85,6 +90,8 @@ imshow(np.squeeze(Y_train[ix]))
 plt.show()
 
 def mean_iou(y_true, y_pred):
+    y_true = y_true
+    y_pred = y_pred
     prec = []
     for t in np.arange(0.5, 1.0, 0.05):
         y_pred_ = tf.to_int32(y_pred > t)
@@ -151,13 +158,14 @@ c9 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', paddin
 outputs = Conv2D(1, (1, 1), activation='sigmoid') (c9)
 
 model = Model(inputs=[inputs], outputs=[outputs])
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=[mean_iou])
+adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+model.compile(optimizer=adam, loss='binary_crossentropy', metrics=[mean_iou])
 model.summary()
-
-
-# Fit model
+#[mean_iou]
+#
+# #Fit model
 # earlystopper = EarlyStopping(patience=5, verbose=1)
-# checkpointer = ModelCheckpoint('model-dsbowl2018-1.h5', verbose=1, save_best_only=True)
+# checkpointer = ModelCheckpoint('model-dsbowlpri2018-1.h5', verbose=1, save_best_only=True)
 # results = model.fit(X_train, Y_train, validation_split=0.1, batch_size=16, epochs=50,
 #                     callbacks=[earlystopper, checkpointer])
 
@@ -182,7 +190,7 @@ for i in range(len(preds_test)):
 
 
 
-print 'Perform a sanity check on some random training samples'
+print ('Perform a sanity check on some random training samples')
 ix = random.randint(0, len(preds_train_t))
 imshow(X_train[ix])
 plt.show()
@@ -191,7 +199,7 @@ plt.show()
 imshow(np.squeeze(preds_train_t[ix]))
 plt.show()
 
-print 'Perform a sanity check on some random validation samples'
+print ('Perform a sanity check on some random validation samples')
 ix = random.randint(0, len(preds_val_t))
 imshow(X_train[int(X_train.shape[0]*0.9):][ix])
 plt.show()

@@ -2,3 +2,4 @@
 .idea/inspectionProfiles/
 .idea/workspace.xml
 model-dsbowl2018-1.h5
+train_clo.txt

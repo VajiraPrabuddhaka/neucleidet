@@ -5,6 +5,7 @@ import warnings
 
 import numpy as np
 import pandas as pd
+#import keras_rcnn
 
 import matplotlib.pyplot as plt
 
@@ -24,6 +25,7 @@ from keras.layers.merge import concatenate
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras import backend as K
 from keras import optimizers
+from keras.utils import plot_model
 
 import tensorflow as tf
 
@@ -80,6 +82,8 @@ for n, id_ in tqdm(enumerate(test_ids), total=len(test_ids)):
     X_test[n] = img
 
 print('Done!')
+print("fuck")
+print(Y_train[0])
 
 
 # Check if training data looks all right
@@ -101,6 +105,13 @@ def mean_iou(y_true, y_pred):
             score = tf.identity(score)
         prec.append(score)
     return K.mean(K.stack(prec), axis=0)
+
+# def mean_iou(y_true, y_pred):
+#    score, up_opt = tf.metrics.mean_iou(y_true, y_pred, 2)
+#    K.get_session().run(tf.local_variables_initializer())
+#    with tf.control_dependencies([up_opt]):
+#        score = tf.identity(score)
+#    return score
 
 
 # Build U-Net model
@@ -158,20 +169,24 @@ c9 = Conv2D(16, (3, 3), activation='elu', kernel_initializer='he_normal', paddin
 outputs = Conv2D(1, (1, 1), activation='sigmoid') (c9)
 
 model = Model(inputs=[inputs], outputs=[outputs])
-adam = optimizers.Adam(lr=0.0001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+adam = optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
 model.compile(optimizer=adam, loss='binary_crossentropy', metrics=[mean_iou])
+
+#
 model.summary()
 #[mean_iou]
-#
-# #Fit model
+
+#plot_model(model, to_file='model.png')
+
+#Fit model
 # earlystopper = EarlyStopping(patience=5, verbose=1)
 # checkpointer = ModelCheckpoint('model-dsbowlpri2018-1.h5', verbose=1, save_best_only=True)
-# results = model.fit(X_train, Y_train, validation_split=0.1, batch_size=16, epochs=50,
-#                     callbacks=[earlystopper, checkpointer])
+# results = model.fit(X_train, Y_train, validation_split=0.1, batch_size=16, epochs=100,
+#                     callbacks=[checkpointer])
 
-
+#earlystopper
 # Predict on train, val and test
-model = load_model('model-dsbowl2018-1.h5', custom_objects={'mean_iou': mean_iou})
+model = load_model('model-dsbowlpri2018-1.h5', custom_objects={'mean_iou': mean_iou})
 preds_train = model.predict(X_train[:int(X_train.shape[0]*0.9)], verbose=1)
 preds_val = model.predict(X_train[int(X_train.shape[0]*0.9):], verbose=1)
 preds_test = model.predict(X_test, verbose=1)
@@ -181,7 +196,9 @@ preds_train_t = (preds_train > 0.5).astype(np.uint8)
 preds_val_t = (preds_val > 0.5).astype(np.uint8)
 preds_test_t = (preds_test > 0.5).astype(np.uint8)
 
-# Create list of upsampled test masks
+
+
+# Create list of upsampled test masksst
 preds_test_upsampled = []
 for i in range(len(preds_test)):
     preds_test_upsampled.append(resize(np.squeeze(preds_test[i]),
@@ -189,7 +206,8 @@ for i in range(len(preds_test)):
                                        mode='constant', preserve_range=True))
 
 
-
+print ("See predicted list")
+print (preds_test)
 print ('Perform a sanity check on some random training samples')
 ix = random.randint(0, len(preds_train_t))
 imshow(X_train[ix])
@@ -237,4 +255,4 @@ for n, id_ in enumerate(test_ids):
 sub = pd.DataFrame()
 sub['ImageId'] = new_test_ids
 sub['EncodedPixels'] = pd.Series(rles).apply(lambda x: ' '.join(str(y) for y in x))
-sub.to_csv('sub-dsbowl2018-1.csv', index=False)
+sub.to_csv('sub-dsbowl2018-1_n.csv', index=False)
